@@ -1,6 +1,15 @@
 {
 	"name": "@mediabirds/directus-cloudflare-streams",
 	"description": "Uploads video's to cloudflare streams and attaches the cloudflare stream ID to the metadata",
+    "repository": {
+        "url": "https://github.com/mediabirds/directus-cloudflare-streams",
+        "type": "git"
+    },
+    "author": {
+        "email": "richard@codeit.ninja",
+        "name": "Richard Mauritz",
+        "url": "https://codeit.ninja"
+    },
 	"icon": "extension",
 	"version": "1.0.1",
 	"keywords": [

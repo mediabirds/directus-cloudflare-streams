@@ -20,7 +20,7 @@ On delete it removes it from Cloudflare streams.
 
 To install run
 
-```bash
+```cli
 pnpm install @mediabirds/directus-cloudflare-streams
 ```
 

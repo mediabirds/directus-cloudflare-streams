@@ -68,7 +68,7 @@ export default defineHook(({ action, filter }, context) => {
         for await(const key of keys) {
             const { file } = await assetsService.getAsset(key);
 
-            if (!file.metadata.cloudflare_streams_media_id) {
+            if (!file.metadata?.cloudflare_streams_media_id) {
                 logger.info(`No Cloudflare Streams media ID found for asset ${key}. Skipping deletion.`);
                 continue;
             }

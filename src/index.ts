@@ -1,3 +1,4 @@
+import type { EventContext } from '@directus/types'
 import { defineHook } from '@directus/extensions-sdk';
 import * as tus from 'tus-js-client'
 
@@ -10,7 +11,7 @@ export default defineHook(({ action, filter }, context) => {
         return;
     }
 
-	action('files.upload', async (payload, req) => {
+    const uploader = async (key: string, req: EventContext) => {
         const assetsService = new AssetsService({
             schema: await getSchema(),
             accountability: req.accountability
@@ -20,7 +21,7 @@ export default defineHook(({ action, filter }, context) => {
             accountability: req.accountability
         });
     
-        const asset = await assetsService.getAsset(payload.key);
+        const asset = await assetsService.getAsset(key);
 
         if (asset.file.type.startsWith('video/') === false) {
             return
@@ -28,7 +29,7 @@ export default defineHook(({ action, filter }, context) => {
 
         logger.info(`Uploading video to Cloudflare Streams: ${asset.file.filename_disk}`);
 
-        const upload = new tus.Upload(asset.stream, {
+        return new tus.Upload(asset.stream, {
             chunkSize: 50 * 1024 * 1024,
             endpoint: `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_STREAMS_ACCOUNT_ID}/stream`,
             headers: {
@@ -44,19 +45,28 @@ export default defineHook(({ action, filter }, context) => {
             },
             onProgress: function (bytesUploaded, bytesTotal) {
                 const percentage = ((bytesUploaded / bytesTotal) * 100).toFixed(2);
-                logger.info(`${payload.key} ${percentage}%`)
+                logger.info(`${key} ${percentage}%`)
             },
             onSuccess: async (tusPayload) => {
                 const mediaIdHeader = tusPayload.lastResponse.getHeader("stream-media-id");
 
                 if (mediaIdHeader) {
-                    filesService.updateOne(payload.key, { metadata: { cloudflare_streams_media_id: mediaIdHeader } })
+                    filesService.updateOne(key, { metadata: { cloudflare_streams_media_id: mediaIdHeader } })
                     logger.info(`Successfully uploaded video to Cloudflare Streams: ${asset.file.filename_disk} -> ${mediaIdHeader}`);
                 }
             },
         });
+    }
 
-        upload.start()
+	action('files.upload', async (payload, req) => {
+        const upload = await uploader(payload.key, req);
+
+        if (upload) {
+            logger.info(`Starting upload for file ${payload.key}`);
+            upload.start();
+        } else {
+            logger.info(`No upload needed for file ${payload.key}`);
+        }
 	});
 
     filter('files.delete', async (keys: any, req) => {
@@ -87,6 +97,28 @@ export default defineHook(({ action, filter }, context) => {
 
                 for (const error of response.errors) {
                     logger.error(`Could not delete file from cloudflare streams: ${error.message}`);
+                }
+            }
+        }
+    })
+
+    action('files.update', async ({ keys }, req) => {
+        const assetsService = new AssetsService({
+            schema: await getSchema(),
+            accountability: req.accountability
+        });
+
+        for await(const key of keys) {
+            const { file } = await assetsService.getAsset(key);
+
+            if (!file.metadata?.cloudflare_streams_media_id) {
+                const upload = await uploader(key, req);
+
+                if (upload) {
+                    logger.info(`Starting upload for file ${key}`);
+                    upload.start();
+                } else {
+                    logger.info(`No upload needed for file ${key}`);
                 }
             }
         }

@@ -60,6 +60,9 @@ export default defineHook(({ action, filter }, context) => {
     }
 
 	action('files.upload', async (payload, req) => {
+        console.log(`Uploading file ${payload.key} to Cloudflare Streams`);
+        logger.info(`Uploading file ${payload.key} to Cloudflare Streams`);
+
         try {
             const upload = await uploader(payload.key, req);
 

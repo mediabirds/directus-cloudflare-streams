@@ -12,6 +12,7 @@ export default defineHook(({ action, filter }, context) => {
     }
 
     const uploader = async (key: string, req: EventContext) => {
+        logger.info(`Starting upload for file ${key}`);
         const assetsService = new AssetsService({
             schema: await getSchema(),
             accountability: req.accountability
@@ -59,13 +60,17 @@ export default defineHook(({ action, filter }, context) => {
     }
 
 	action('files.upload', async (payload, req) => {
-        const upload = await uploader(payload.key, req);
+        try {
+            const upload = await uploader(payload.key, req);
 
-        if (upload) {
-            logger.info(`Starting upload for file ${payload.key}`);
-            upload.start();
-        } else {
-            logger.info(`No upload needed for file ${payload.key}`);
+            if (upload) {
+                logger.info(`Starting upload for file ${payload.key}`);
+                upload.start();
+            } else {
+                logger.info(`No upload needed for file ${payload.key}`);
+            }
+        } catch(error) {
+            logger.error(`Error uploading file ${payload.key}: ${error}`);
         }
 	});
 

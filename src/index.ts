@@ -60,7 +60,6 @@ export default defineHook(({ action, filter }, context) => {
     }
 
 	action('files.upload', async (payload, req) => {
-        console.log(`Uploading file ${payload.key} to Cloudflare Streams`);
         logger.info(`Uploading file ${payload.key} to Cloudflare Streams`);
 
         try {
@@ -117,17 +116,23 @@ export default defineHook(({ action, filter }, context) => {
         });
 
         for await(const key of keys) {
-            const { file } = await assetsService.getAsset(key);
+            logger.info(`Uploading file ${key} to Cloudflare Streams`);
 
-            if (!file.metadata?.cloudflare_streams_media_id) {
-                const upload = await uploader(key, req);
+            try {
+                const { file } = await assetsService.getAsset(key);
 
-                if (upload) {
-                    logger.info(`Starting upload for file ${key}`);
-                    upload.start();
-                } else {
-                    logger.info(`No upload needed for file ${key}`);
+                if (!file.metadata?.cloudflare_streams_media_id) {
+                    const upload = await uploader(key, req);
+
+                    if (upload) {
+                        logger.info(`Starting upload for file ${key}`);
+                        upload.start();
+                    } else {
+                        logger.info(`No upload needed for file ${key}`);
+                    }
                 }
+            } catch (error) {
+                logger.error(`Error uploading file ${key}: ${error}`);
             }
         }
     })
